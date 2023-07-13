@@ -29,6 +29,12 @@ test_spm.model
 *.nfs*
 
 # recipe related
+egs*/*/data*
+egs*/*/.ipynb_checkpoints
+egs*/*/downloads
+egs*/*/dump
+egs*/*/enhan
+egs*/*/exp
 egs*/*/*/data*
 egs*/*/*/db
 egs*/*/*/downloads
@@ -89,3 +95,4 @@ tools/ice-g2p*
 tools/fairseq*
 tools/featbin*
 tools/miniconda
+egs2/uasr1/vcpkg
