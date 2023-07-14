@@ -394,7 +394,7 @@ class UASRTask(AbsTask):
         discriminator_param_list = list(model.discriminator.parameters())
 
         # Add optional sets of model parameters
-        if model.use_segmenter:
+        if model.segmenter is not None:
             generator_param_list += list(model.segmenter.parameters())
         if (
             "pseudo_label_loss" in model.losses.keys()

@@ -16,6 +16,12 @@ class ASRPackedContents(PackedContents):
     yaml_files = ["asr_train_config", "lm_train_config"]
 
 
+class UASRPackedContents(PackedContents):
+    # These names must be consistent with the argument of inference functions
+    files = ["uasr_model_file", "lm_file"]
+    yaml_files = ["uasr_train_config", "lm_train_config"]
+
+
 class STPackedContents(PackedContents):
     files = ["st_model_file"]
     yaml_files = ["st_train_config"]
@@ -69,6 +75,7 @@ def get_parser() -> argparse.ArgumentParser:
     # Create subparser for ASR
     for name, contents in [
         ("asr", ASRPackedContents),
+        ("uasr", UASRPackedContents),
         ("st", STPackedContents),
         ("tts", TTSPackedContents),
         ("enh", EnhPackedContents),

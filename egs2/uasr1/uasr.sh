@@ -129,7 +129,7 @@ inference_args=   # Arguments for decoding, e.g., "--lm_weight 0.1".
                   # Note that it will overwrite args in inference config.
 inference_lm=valid.loss.ave.pth       # Language model path for decoding.
 inference_ngram=${ngram_num}gram.bin  # Ngram language model path for decoding.
-inference_uasr_model=valid.weighted_lm_ppl.best.pth # uasr model path for decoding.
+inference_uasr_model=valid.loss.best.pth            # uasr model path for decoding.
                                                     # e.g.
                                                     # inference_uasr_model=train.loss.best.pth
                                                     # inference_uasr_model=3epoch.pth
@@ -387,11 +387,12 @@ if ${use_word_lm}; then
     lm_token_type=word
 else
     lm_token_list="${token_list}"
-    if [ "${token_type}" = phn ]; then
-        lm_token_type="char"
-    else
-        lm_token_type="${token_type}"
-    fi
+    lm_token_type="${token_type}"
+#    if [ "${token_type}" = phn ]; then
+#        lm_token_type="char"
+#    else
+#        lm_token_type="${token_type}"
+#    fi
 fi
 
 
@@ -684,6 +685,7 @@ if ! "${skip_data_prep}"; then
 
     if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
         _logdir="${tokendir}/logdir"
+        # MYNOTE: Make sure that the right nltk sublibraries are loaded.
         python -c "import nltk; nltk.download('averaged_perceptron_tagger')"
 
         # shellcheck disable=SC2002
@@ -890,6 +892,7 @@ if ! "${skip_train}"; then
             log "LM collect-stats started... log: '${_logdir}/stats.*.log'"
             # NOTE: --*_shape_file doesn't require length information if --batch_type=unsorted,
             #       but it's used only for deciding the sample ids.
+            # MYNOTE: Add --g2p option and added the "phn" as a valid lm_token_type in espnet2.tasks.lm
             # shellcheck disable=SC2046,SC2086
             ${train_cmd} JOB=1:"${_nj}" "${_logdir}"/stats.JOB.log \
                 ${python} -m espnet2.bin.lm_train \
@@ -898,6 +901,7 @@ if ! "${skip_train}"; then
                     --bpemodel "${bpemodel}" \
                     --token_type "${lm_token_type}"\
                     --token_list "${lm_token_list}" \
+                    --g2p "${g2p}" \
                     --non_linguistic_symbols "${nlsyms_txt}" \
                     --cleaner "${cleaner}" \
                     --train_data_path_and_name_and_type "${data_feats}/lm_train.txt,text,text" \
@@ -975,6 +979,8 @@ if ! "${skip_train}"; then
                 jobname="${lm_exp}/train.log"
             fi
 
+            # MYNOTE: Add --g2p option and added the "phn" as a valid lm_token_type in espnet2.tasks.lm
+            #         This note is the same as in the previous espnet2.bin.lm_train call
             # shellcheck disable=SC2086
             ${python} -m espnet2.bin.launch \
                 --cmd "${cuda_cmd} --name ${jobname}" \
@@ -989,6 +995,7 @@ if ! "${skip_train}"; then
                     --bpemodel "${bpemodel}" \
                     --token_type "${lm_token_type}"\
                     --token_list "${lm_token_list}" \
+                    --g2p "${g2p}" \
                     --non_linguistic_symbols "${nlsyms_txt}" \
                     --cleaner "${cleaner}" \
                     --valid_data_path_and_name_and_type "${lm_dev_text},text,text" \
@@ -1789,6 +1796,7 @@ if ! "${skip_eval}"; then
         [ -f local/score.sh ] && local/score.sh ${local_score_opts} "${uasr_exp}"
 
         # Show results in Markdown syntax
+        # MYNOTE: Created the show_uasr_result.sh script that accepts wer and per scores
         scripts/utils/show_uasr_result.sh "${uasr_exp}" > "${uasr_exp}"/RESULTS.md
         cat "${uasr_exp}"/RESULTS.md
 
@@ -1817,6 +1825,7 @@ if [ -z "${download_model}" ]; then
         if [ "${nlsyms_txt}" != none ]; then
             _opts+="--option ${nlsyms_txt} "
         fi
+        # MYNOTE: Added UASRPackedContents inside espnet2.bin.pack
         # shellcheck disable=SC2086
         ${python} -m espnet2.bin.pack uasr \
             --uasr_train_config "${uasr_exp}"/config.yaml \
