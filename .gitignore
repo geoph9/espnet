@@ -34,7 +34,7 @@ egs*/*/.ipynb_checkpoints
 egs*/*/downloads
 egs*/*/dump
 egs*/*/enhan
-egs*/*/exp
+egs*/*/exp*
 egs*/*/*/data*
 egs*/*/*/db
 egs*/*/*/downloads
