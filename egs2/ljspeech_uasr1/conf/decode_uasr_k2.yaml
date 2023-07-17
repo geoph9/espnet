@@ -1,0 +1,13 @@
+batch_size: 1
+search_beam_size: 20
+output_beam_size: 5
+min_active_states: 14000
+max_active_states: 56000
+blank_bias: 0.0  # blank_penalty
+lattice_weight: 1.0
+
+#lang_dir: None
+#use_fgram_rescoring: False
+#am_weight: 0.5
+#decoder_weight: 0.5
+#nnlm_weight: 1.0

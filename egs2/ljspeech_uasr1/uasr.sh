@@ -1212,9 +1212,9 @@ if ! "${skip_train}"; then
         fi
         # MYNOTE: Handle s3prl feature type (frontend options)
         if [ "${_feats_type}" = extracted ]; then
-            _opts+="--frontend s3prl"
-            _opts+="--frontend_conf download_dir=/disk/scratch2/s2513809/data/models/w2v2/"  # TODO: (MYNOTE) set as variable
-            _opts+="--frontend_conf upstream=wav2vec2"
+            _opts+="--frontend s3prl "
+            _opts+="--frontend_conf download_dir=/disk/scratch2/s2513809/data/models/w2v2/ "  # TODO: (MYNOTE) set as variable
+            _opts+="--frontend_conf upstream=wav2vec2 "
             #_opts+="--frontend_conf path_or_url=/disk/scratch2/s2513809/data/models/w2v2/wav2vec_small_960h.pt" #TODO
         fi
         # shellcheck disable=SC2046,SC2086
@@ -1346,7 +1346,7 @@ if ! "${skip_train}"; then
                 _opts+="--frontend_conf fs=${fs} "
                 # MYNOTE: add input_size argument
                 input_dim=$(cat ${data_feats}/org/${train_set}/feats_dim)
-                _opts+="--input_size ${input_dim}"
+                _opts+="--input_size ${input_dim} "
             fi
         else
             _scp=feats.scp
@@ -1570,8 +1570,9 @@ if ! "${skip_eval}"; then
         if "${use_k2}"; then
             uasr_inference_tool="espnet2.bin.uasr_inference_k2"
             use_ngram=false
-
-            _opts+="--k2_config ${k2_config} "
+            if [ -f ${k2_config} ] ; then
+                _opts+="--k2_config ${k2_config} "
+            fi
             _opts+="--token_type word "
             _opts+="--decoding_graph ${k2_graph_dir}/HLG.pt "
             _opts+="--word_token_list ${k2_lang_dir}/words.txt "

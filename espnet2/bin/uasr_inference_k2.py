@@ -3,6 +3,7 @@ import argparse
 import datetime
 import logging
 import sys
+import os
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, Tuple, Union
 
@@ -360,8 +361,12 @@ def inference(
 
     # 1. Set random-seed
     set_all_random_seed(seed)
-    with open(k2_config) as k2_config_file:
-        dict_k2_config = yaml.safe_load(k2_config_file)
+    if k2_config is None or (not os.path.isfile(k2_config)):
+        logging.info(f"{k2_config=} is None or an invalid path. We will ignore it.")
+        dict_k2_config = {}
+    else:
+        with open(k2_config) as k2_config_file:
+            dict_k2_config = yaml.safe_load(k2_config_file)
 
     # 2. Build speech2text
     speech2text_kwargs = dict(
