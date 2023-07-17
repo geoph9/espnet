@@ -1214,8 +1214,7 @@ if ! "${skip_train}"; then
         if [ "${_feats_type}" = extracted ]; then
             _opts+="--frontend s3prl "
             _opts+="--frontend_conf download_dir=/disk/scratch2/s2513809/data/models/w2v2/ "  # TODO: (MYNOTE) set as variable
-            _opts+="--frontend_conf upstream=wav2vec2 "
-            #_opts+="--frontend_conf path_or_url=/disk/scratch2/s2513809/data/models/w2v2/wav2vec_small_960h.pt" #TODO
+            _opts+="--frontend_conf frontend_conf='{upstream: wav2vec2}' "
         fi
         # shellcheck disable=SC2046,SC2086
         ${cuda_cmd} --gpu "${_ngpu}"  JOB=1:"${_nj}" "${_logdir}"/stats.JOB.log \
