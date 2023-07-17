@@ -41,7 +41,7 @@ expdir=exp           # Directory to save experiments.
 python=python3       # Specify python to execute espnet commands.
 
 # Data preparation related
-local_data_opts= # The options given to local/data.sh.
+local_data_opts="--python ${python} --fs 16000 --stage 1" # The options given to local/data.sh.
 
 # Speed perturbation related
 speed_perturb_factors=  # perturbation factors, e.g. "0.9 1.0 1.1" (separated by space).
