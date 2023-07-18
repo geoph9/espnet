@@ -97,6 +97,7 @@ def extract(
         mat_writer[key] = npy_feats
         lengths_file.write(f"{key} {feats_lengths}\n")
     npy_writer.close()
+    mat_writer.close()
     lengths_file.close()
 
 

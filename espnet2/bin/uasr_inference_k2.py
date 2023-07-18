@@ -101,6 +101,7 @@ class k2Speech2Text:
         num_paths: int = 1000,
         nbest_batch_size: int = 500,
         nll_batch_size: int = 100,
+        g2p_type: Optional[str] = None,
     ):
         assert check_argument_types()
 
@@ -137,7 +138,10 @@ class k2Speech2Text:
         self.decoding_graph = self.decoding_graph.to(device)
 
         assert token_type is not None
-        tokenizer = build_tokenizer(token_type=token_type)
+        token_kwargs = {}
+        if token_type == "phn":
+            token_kwargs["g2p_type"] = "g2p_en"
+        tokenizer = build_tokenizer(token_type=token_type, **token_kwargs)
         converter = TokenIDConverter(token_list=token_list)
         logging.info(f"Text tokenizer: {tokenizer}")
         logging.info(f"Running on : {device}")
@@ -343,6 +347,7 @@ def inference(
     nbest_batch_size: int,
     nll_batch_size: int,
     k2_config: Optional[str],
+    g2p_type: Optional[str] = None,
 ):
     assert is_ctc_decoding, "Currently, only ctc_decoding graph is supported."
     assert check_argument_types()
@@ -393,6 +398,7 @@ def inference(
         num_paths=num_paths,
         nbest_batch_size=nbest_batch_size,
         nll_batch_size=nll_batch_size,
+        g2p_type=g2p_type,
     )
 
     speech2text_kwargs = dict(**speech2text_kwargs, **dict_k2_config)
@@ -612,6 +618,7 @@ def get_parser():
         "--word_token_list", type=str_or_none, default=None, help="output token list"
     )
     group.add_argument("--k2_config", type=str, help="Config file for decoding with k2")
+    group.add_argument("--g2p_type", type=str, default=None, help="G2P type when token_type=phn")
 
     return parser
 

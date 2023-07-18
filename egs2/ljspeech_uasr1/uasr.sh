@@ -41,7 +41,7 @@ expdir=exp           # Directory to save experiments.
 python=python3       # Specify python to execute espnet commands.
 
 # Data preparation related
-local_data_opts="--python ${python} --fs 16000 --stage 1" # The options given to local/data.sh.
+local_data_opts="--python ${python} --fs 16000" # The options given to local/data.sh.
 
 # Speed perturbation related
 speed_perturb_factors=  # perturbation factors, e.g. "0.9 1.0 1.1" (separated by space).
@@ -56,7 +56,7 @@ vad_home=            # The directory for vad
                      # TODO(jiatong): add more options and variants of vad for choices
 silence_trim=true    # Whether to apply vad information in audio trimming
 precompute_batchsize=1       # Batchsize for feature pre-computation
-write_collected_feats=true  # Whether to write collected feats for faster training (need more extra spaces)
+write_collected_feats=false  # Whether to write collected feats for faster training (need more extra spaces)
 
 # Tokenization related
 token_type=phn      # Tokenization type (phn).
@@ -1208,7 +1208,7 @@ if ! "${skip_train}"; then
                 fi
             done
             input_dim=$(cat ${data_feats}/org/${train_set}/feats_dim)
-            _opts+="--input_size ${input_dim}"
+            _opts+="--input_size ${input_dim} "
         fi
         # MYNOTE: Handle s3prl feature type (frontend options)
         if [ "${_feats_type}" = extracted ]; then
@@ -1355,7 +1355,8 @@ if ! "${skip_train}"; then
             _opts+="--input_size=${_input_size} "
 
         fi
-        _type="npy"
+        # MYNOTE: Remove npy as the default feat type
+        #_type="npy"
 
         if [ "${num_splits_uasr}" -gt 1 ]; then
             # If you met a memory error when parsing text files, this option may help you.
@@ -1403,6 +1404,13 @@ if ! "${skip_train}"; then
             jobname="$(basename ${uasr_exp})"
         else
             jobname="${uasr_exp}/train.log"
+        fi
+        
+        # MYNOTE: Add s3prl frontend for w2v2 features
+        if [ "${_feats_type}" = extracted ]; then
+            _opts+="--frontend s3prl "
+            _opts+="--frontend_conf download_dir=/disk/scratch2/s2513809/data/models/w2v2/ "  # TODO: (MYNOTE) set as variable
+            _opts+="--frontend_conf frontend_conf='{upstream: wav2vec2}' "
         fi
 
         # shellcheck disable=SC2086
@@ -1477,24 +1485,31 @@ if ! "${skip_eval}"; then
 
         _logdir="${uasr_stats_dir}/logdir"
         mkdir -p "${_logdir}"
-
+        
         for dset in ${test_sets}; do
-            _data="${data_feats}/${dset}"
-            _scp=wav.scp
-            _type=sound
+            # MYNOTE: Add the following if check to make sure that the kaldi_ark feats.scp file won't
+            #         be overwritten if it exists and write_collected_feats is false.
+            if [ ! -f "${data_feats}/${dset}"/feats.scp ] || [ $write_collected_feats = true ] ; then
+                _data="${data_feats}/${dset}"
+                _scp=wav.scp
+                _type=sound
 
-            ${cuda_cmd} --gpu "${ngpu}" "${_logdir}/extract_feature_${dset}.log" \
-                ${python} -m espnet2.bin.uasr_extract_feature \
-                    --data_path_and_name_and_type "${_data}/${_scp},speech,${_type}" \
-                    --uasr_train_config "${uasr_exp}/config.yaml" \
-                    --uasr_model_file "${uasr_exp}/${inference_uasr_model}" \
-                    --key_file "${_data}/${_scp}"\
-                    --ngpu ${ngpu} \
-                    --batch_size ${precompute_batchsize} \
-                    --output_dir "${uasr_stats_dir}" \
-                    --dset "${dset}"
-
-            cp ${uasr_stats_dir}/${dset}/collect_feats/feats.scp "${data_feats}/${dset}"/feats.scp
+                ${cuda_cmd} --gpu "${ngpu}" "${_logdir}/extract_feature_${dset}.log" \
+                    ${python} -m espnet2.bin.uasr_extract_feature \
+                        --data_path_and_name_and_type "${_data}/${_scp},speech,${_type}" \
+                        --uasr_train_config "${uasr_exp}/config.yaml" \
+                        --uasr_model_file "${uasr_exp}/${inference_uasr_model}" \
+                        --key_file "${_data}/${_scp}"\
+                        --ngpu ${ngpu} \
+                        --batch_size ${precompute_batchsize} \
+                        --output_dir "${uasr_stats_dir}" \
+                        --dset "${dset}"
+                
+                log "${data_feats}/${dset}/feats.scp will be overwritten with _type=sound .npy files"
+                cp ${uasr_stats_dir}/${dset}/collect_feats/feats.scp "${data_feats}/${dset}"/feats.scp
+            else
+                log "Skipping the extraction of ${data_feats}/${dset}/feats.scp since the file already exists and write_collected_feats=${write_collected_feats}"
+            fi
         done
 
         if "${use_feature_clustering}"; then
@@ -1572,7 +1587,14 @@ if ! "${skip_eval}"; then
             if [ -f ${k2_config} ] ; then
                 _opts+="--k2_config ${k2_config} "
             fi
-            _opts+="--token_type word "
+            # MYNOTE: Changed token_type from phn to wrd and word_token_list from words.txt to point to tokens.txt
+            # MYNOTE: Also added the g2p_type option which will be passed to the build_tokenizer. This required to 
+            #         make some changes to the espnet.espnet2.bin.uasr_inference_k2 file.
+            #_opts+="--token_type phn "
+            #_opts+="--g2p_type $g2p "
+            #_opts+="--decoding_graph ${k2_graph_dir}/HLG.pt "
+            #_opts+="--word_token_list ${k2_lang_dir}/tokens.txt "
+            _opts+="--token_type wrd "
             _opts+="--decoding_graph ${k2_graph_dir}/HLG.pt "
             _opts+="--word_token_list ${k2_lang_dir}/words.txt "
         fi
@@ -1609,7 +1631,12 @@ if ! "${skip_eval}"; then
                 fi
             else
                 _scp=feats.scp
-                _type=kaldi_ark
+                # MYNOTE: Change type to npy if write_collected_feats is false
+                if [ $write_collected_feats = true ] ; then
+                    _type="npy"
+                else
+                    _type=kaldi_ark
+                fi
             fi
 
             # 1. Split the key file
